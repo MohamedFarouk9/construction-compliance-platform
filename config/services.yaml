@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+            - '../src/*/Tests/'
+            - '../src/Shared/Application/Health/HealthCheckResult.php'
+
+when@test:
+    services:
+        App\Shared\Domain\Health\DatabaseHealthProbeInterface:
+            alias: App\Shared\Infrastructure\Health\DoctrineDatabaseHealthProbe
+            public: true

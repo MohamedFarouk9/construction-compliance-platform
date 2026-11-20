@@ -1,0 +1,25 @@
+###> BuildGuard / Env ###
+.env
+.env.local
+.env.*.local
+###< BuildGuard / Env ###
+
+###> symfony/framework-bundle ###
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+.phpunit.result.cache
+###< phpunit/phpunit ###
+
+###> IDE & OS ###
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+###< IDE & OS ###
