@@ -37,3 +37,41 @@ No mistakes recorded yet.
 ### Interview notes
 
 I am building BuildGuard as a personal production-style learning project. I will only claim technologies and features after implementing and testing them.
+
+---
+
+## 2026-11-20 — Milestone 0: Foundation
+
+### What was built
+
+- Bootstrapped **Symfony 7.4 LTS** (`symfony/skeleton:^7.4`) at the repository root with modular `src/Shared/{Domain,Application,Infrastructure,Presentation,Tests}` layering.
+- Configured `.env.example` fallback loading in `public/index.php`, `bin/console`, and `tests/bootstrap.php` so fresh clones and test runs boot without requiring `.env` to be committed.
+- Configured **Doctrine DBAL** (without ORM until Milestone 1) with a 2-second connection timeout (`PDO::ATTR_TIMEOUT: 2`) and **Monolog** error logging to `var/log/` and `php://stderr`.
+- Implemented `GET /health` (`HealthController` -> `HealthChecker` -> `DatabaseHealthProbeInterface` -> `DoctrineDatabaseHealthProbe`) returning `200 OK` when MySQL responds to `SELECT 1` and `503 Service Unavailable` with safe JSON (no raw SQL/PDO errors leaked) when MySQL is unreachable.
+- Created unit, DBAL integration, and `WebTestCase` functional tests under `src/Shared/Tests/`.
+- Wrote [docs/milestone-0-report.md](file:///e:/construction-compliance-platform/docs/milestone-0-report.md) as a beginner's guide to Symfony and local execution.
+
+### Workflow decision (Local-first, Docker deferred)
+
+- Initially scaffolded and tested Docker Compose (`nginx:1.27-alpine`, `php:8.4-fpm-alpine`, `mysql:8.4`), where `GET /health` and the MySQL-stop `503` failure drill were verified against live containers.
+- Switched to **100% local Windows execution** (XAMPP PHP 8.2.12 + Composer 2.9.5 + local MySQL) for Milestones 1–9 to iterate faster and learn Symfony fundamentals without Docker friction, keeping `compose.yaml` and `docker/` parked for final containerization.
+- Adjusted `composer.json` constraints (`doctrine/doctrine-bundle: ^2.19.4`, `phpunit/phpunit: ^11.5.58`) and verified `php bin/phpunit` (`7 tests, 33 assertions`), `php bin/console about` (`Symfony v7.4.23`, `PHP 8.2.12`), and live local HTTP `/health` (`503` degraded when `buildguard` DB was absent, logging `SQLSTATE[HY000] [1049] Unknown database 'buildguard'` to `var/log/dev.log`).
+
+### Mistakes and lessons
+
+1. **Symfony Flex defaults can surprise custom stacks**: Installing `doctrine/doctrine-bundle` injected an `orm:` section in `doctrine.yaml` (failing `cache:clear` without `doctrine/orm`) and appended a Postgres `database` service to `compose.yaml` + `compose.override.yaml`. Always inspect `git status` and Flex recipes after `composer require`.
+2. **Symfony 7.4 requires `DEFAULT_URI`**: `config/packages/routing.yaml` references `%env(DEFAULT_URI)%`, which must be declared in `.env.example` and `.env`.
+3. **PHP runtime parity matters**: Dependencies resolved inside PHP 8.4 (`doctrine-bundle 3.x`, `phpunit 13.x`) trigger Composer's `platform_check.php` when run on local PHP 8.2.12. Aligning `composer.json` constraints to PHP 8.2 keeps local runs seamless.
+4. **PHPUnit env overrides inside containers/shells**: Using both `<server name="APP_ENV" value="test" force="true" />` and `<env name="APP_ENV" value="test" force="true" />` in `phpunit.dist.xml` guarantees `KernelTestCase` boots in the `test` environment even if `APP_ENV=dev` is already set in the shell.
+
+### Interview notes (Health check & foundation)
+
+- **Problem**: Before adding domain endpoints, operators and load balancers need a fast, safe readiness endpoint verifying the API and database are reachable without leaking internal credentials or SQL errors.
+- **Decision**: Built a DBAL-only `GET /health` endpoint behind a `DatabaseHealthProbeInterface` abstraction in the `Shared` module, separating domain contracts from Doctrine infrastructure and mapping failures to HTTP `503`.
+- **Implementation**: Symfony 7.4 LTS `HealthController` delegates to `HealthChecker` and `DoctrineDatabaseHealthProbe`, executing `SELECT 1` with a 2-second PDO timeout, logging exceptions via PSR-3/Monolog, and returning immutable `HealthCheckResult` JSON.
+- **Failure**: Tested stopping MySQL; `/health` returned `503 Service Unavailable` (`{"status":"degraded","checks":{"database":{"status":"down"}}}`) within the timeout window while `var/log/dev.log` recorded the `Doctrine\DBAL\Exception\ConnectionException` for debugging.
+- **Measurement**: Verified with unit tests (`HealthCheckerTest`), DBAL integration tests (`DoctrineDatabaseHealthProbeTest`), and Symfony `WebTestCase` functional tests (`HealthEndpointTest`).
+- **Trade-off**: Using `SELECT 1` checks basic database connectivity rather than deeper schema/table readiness, and keeping ORM out in Milestone 0 avoids premature entities at the cost of adding ORM/migrations in Milestone 1.
+- **Future improvement**: Expand `/health` in later milestones with probes for S3/LocalStack, RabbitMQ, and Kafka, and split `/health/live` vs `/health/ready` for Kubernetes probes.
+
+> I built and tested this as a personal production-style project locally.
