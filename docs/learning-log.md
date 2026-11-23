@@ -75,3 +75,38 @@ I am building BuildGuard as a personal production-style learning project. I will
 - **Future improvement**: Expand `/health` in later milestones with probes for S3/LocalStack, RabbitMQ, and Kafka, and split `/health/live` vs `/health/ready` for Kubernetes probes.
 
 > I built and tested this as a personal production-style project locally.
+
+
+---
+
+## 2026-11-22 — Milestone 1: Core Domain
+
+### What was built
+
+- Installed `doctrine/orm` (`3.8.0`), `doctrine/doctrine-migrations-bundle` (`3.7.1`), `symfony/validator` (`v7.4.23`), and `doctrine/doctrine-fixtures-bundle` (`4.3.1`, dev) for local PHP 8.2.12.
+- Configured per-module Doctrine ORM attribute mappings in `config/packages/doctrine.yaml` across `Organizations`, `Identity`, `Projects`, `Contractors`, and `Permits`.
+- Built 7 entities (`Organization`, `User`, `Project`, `JobSite`, `Company`, `ContractorAssignment`, `Permit`) with unique constraints, foreign keys (`ON DELETE CASCADE`), and single/composite indexes.
+- Generated and executed initial Doctrine migration (`migrations/Version20261122211041.php`) on both `buildguard` and `buildguard_test` (`MariaDB 10.4.32`), verified with `doctrine:schema:validate`.
+- Built 7 repositories including `ProjectRepository::findAllWithDetails()` using 4-step eager hydration to eliminate both N+1 queries and SQL Cartesian products.
+- Built validated REST API endpoints (`/api/organizations`, `/api/users`, `/api/projects`, `/api/projects/{id}/job-sites`, `/api/projects/{id}/contractors`, `/api/contractors`, `/api/permits`) with `400` malformed JSON, `404` missing parent, `409` duplicate key, and `422` validation error handling.
+- Built `AppFixtures` with realistic construction seed data plus a batched 25-contractor bulk insert using `flush()` + `clear()` every 10 rows.
+- Added unit and functional API tests (`11 tests, 117 assertions` passing) including an eager-loading assertion verifying all collections and proxies are initialized in memory.
+- Verified `EXPLAIN` plans on indexed `projects` and `permits` queries (`type=ref`, `key=idx_permits_project_status`).
+- Wrote [docs/milestone-1-report.md](file:///e:/construction-compliance-platform/docs/milestone-1-report.md).
+
+### Mistakes and lessons
+
+1. **Specify `serverVersion` in `DATABASE_URL`**: Without `serverVersion=10.4.32-MariaDB`, `doctrine:database:create` attempted to connect to the non-existent `buildguard` database to auto-detect the platform version. Pinning `serverVersion` fixes offline DDL generation and matches MariaDB 10.4 accurately.
+2. **Avoid joining multiple `OneToMany` collections in one DQL query**: Joining `jobSites`, `contractorAssignments`, and `permits` in a single query multiplies rows (Cartesian product). Multi-step `IN (:ids)` hydration executes constant `O(1)` queries while keeping all collections initialized.
+
+### Interview notes (Doctrine ORM, N+1, Indexing & Batching)
+
+- **Problem**: A construction platform frequently lists projects alongside their organization, job sites, assigned contractors, and permits; naive ORM lazy loading causes `O(N)` N+1 queries, while naive multi-collection joins cause Cartesian row explosions.
+- **Decision**: Modeled 7 normalized tables across modular Symfony namespaces with targeted composite indexes (`(organization_id, status)`, `(project_id, status)`), multi-step eager hydration in `ProjectRepository`, and chunked `flush()`/`clear()` batching for bulk writes.
+- **Implementation**: Doctrine ORM 3.8 attribute entities, versioned migration `Version20261122211041`, validated request DTOs via `symfony/validator`, and `AppFixtures` batching 25 trade contractors in chunks of 10.
+- **Failure**: Tested invalid JSON (`400`), invalid DTO fields and `ends_at < starts_at` (`422`), missing parent IDs (`404`), and duplicate unique keys/assignments (`409`) so database constraint errors never bubble up as raw `500` responses.
+- **Measurement**: Verified with `doctrine:schema:validate`, `EXPLAIN` (`type=ref`, `key=idx_permits_project_status`, `rows=1`), live HTTP `/api/projects`, and PHPUnit (`11 tests, 117 assertions`, including `PersistentCollection::isInitialized()` assertions).
+- **Trade-off**: Using explicit DTOs and `toArray()` methods adds slight boilerplate compared to magic serializers, but guarantees strict input validation and prevents accidental data leaks or lazy-loading surprises during serialization.
+- **Future improvement**: Add cursor/offset pagination to list endpoints and authentication/RBAC enforcement on write routes in upcoming milestones.
+
+> I built and tested this as a personal production-style project locally.

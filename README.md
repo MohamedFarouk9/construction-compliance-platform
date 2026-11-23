@@ -22,39 +22,49 @@ It helps construction companies manage:
 
 ## Current Status & Workflow
 
-- **Current Milestone:** Milestone 0 (Foundation)
-- **Development Mode:** Local Windows runtime (PHP 8.2.12 + Composer 2.9.5 + local MySQL/XAMPP). Docker files (`compose.yaml`, `docker/`) are kept in the repository for containerization at the end of the project.
-- **New to Symfony?** Start with the step-by-step [Milestone 0 Beginner's Report](file:///e:/construction-compliance-platform/docs/milestone-0-report.md).
+- **Current Milestone:** Milestone 1 (Core Domain — Complete)
+- **Development Mode:** Local Windows runtime (PHP 8.2.12 + Composer 2.9.5 + local MariaDB 10.4.32 / XAMPP). Docker files (`compose.yaml`, `docker/`) are kept in the repository for containerization at the end of the project.
+- **New to Symfony?** Read the beginner guides: [Milestone 0 Report](file:///e:/construction-compliance-platform/docs/milestone-0-report.md) and [Milestone 1 Report](file:///e:/construction-compliance-platform/docs/milestone-1-report.md).
 
-## Milestone 0 Stack
+## Current Stack (Milestones 0–1)
 
 | Component | Selection | Purpose |
 |---|---|---|
 | Runtime | PHP 8.2.12 (local) | Application runtime |
 | Framework | Symfony 7.4 LTS (`symfony/skeleton`) | Modular monolith API foundation |
-| Database | Local MySQL / MariaDB + Doctrine DBAL `^4.6` (`DoctrineBundle ^2.19.4`) | Transactional storage and `SELECT 1` health check |
+| Database & ORM | Local MariaDB 10.4 / MySQL + Doctrine DBAL `^4.6` + Doctrine ORM `^3.8` + Migrations `^3.7` | Transactional storage, modular entities, schema migrations, fixtures |
+| Validation | Symfony Validator `7.4.*` | Attribute-based DTO input validation (`422` responses) |
 | Logging | Monolog (`symfony/monolog-bundle ^4.1`) | Structured dev logs in `var/log/dev.log` |
-| Testing | PHPUnit `^11.5.58` (`symfony/test-pack`) | Unit, DBAL integration, and `WebTestCase` functional tests |
+| Testing | PHPUnit `^11.5.58` (`symfony/test-pack`) | Unit, DBAL integration, and `WebTestCase` functional API tests |
 
 ## Local Quickstart (No Docker)
 
-1. Copy `.env.example` to `.env` and adjust `DATABASE_URL` for your local MySQL credentials:
+1. Copy `.env.example` to `.env` and adjust `DATABASE_URL` for your local MySQL/MariaDB credentials:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-2. Create the `buildguard` database in local MySQL (`CREATE DATABASE IF NOT EXISTS buildguard;`).
+2. Create `buildguard` and `buildguard_test` databases, then run migrations and load fixtures:
+
+```powershell
+php bin/console doctrine:migrations:migrate --no-interaction
+php bin/console doctrine:migrations:migrate --env=test --no-interaction
+php bin/console doctrine:fixtures:load --no-interaction
+```
+
 3. Start the local PHP server (use another free port such as `8085` if `8000` is already in use):
 
 ```powershell
 php -S 127.0.0.1:8085 -t public
 ```
 
-4. Check the health endpoint:
+4. Check endpoints:
 
 ```powershell
 curl.exe -i http://127.0.0.1:8085/health
+curl.exe -sS http://127.0.0.1:8085/api/projects
+curl.exe -sS http://127.0.0.1:8085/api/contractors
 ```
 
 - Healthy (`200 OK`): `{"service":"buildguard-api","status":"ok","checks":{"database":{"status":"up"}},"timestamp":"..."}`
@@ -79,6 +89,7 @@ php bin/phpunit
 ## Project Documentation
 
 - [Milestone 0 Report (Symfony Guide)](file:///e:/construction-compliance-platform/docs/milestone-0-report.md)
+- [Milestone 1 Report (Core Domain & Doctrine Guide)](file:///e:/construction-compliance-platform/docs/milestone-1-report.md)
 - [Project Prompt & Specifications](file:///e:/construction-compliance-platform/docs/project-prompt.md)
 - [Architecture Overview](file:///e:/construction-compliance-platform/docs/architecture.md)
 - [Development Roadmap](file:///e:/construction-compliance-platform/docs/roadmap.md)

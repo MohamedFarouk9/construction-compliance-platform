@@ -17,7 +17,7 @@
         <env name="APP_ENV" value="test" force="true" />
         <env name="APP_SECRET" value="buildguard-test-secret" />
         <env name="DEFAULT_URI" value="http://127.0.0.1:8000" />
-        <env name="DATABASE_URL" value="mysql://root:@127.0.0.1:3306/buildguard?charset=utf8mb4" />
+        <env name="DATABASE_URL" value="mysql://root:@127.0.0.1:3306/buildguard?serverVersion=10.4.32-MariaDB&amp;charset=utf8mb4" />
         <server name="KERNEL_CLASS" value="App\Kernel" />
         <server name="SHELL_VERBOSITY" value="-1" />
     </php>

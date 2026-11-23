@@ -11,6 +11,8 @@ services:
         resource: '../src/'
         exclude:
             - '../src/Kernel.php'
+            - '../src/*/Domain/Entity/'
+            - '../src/*/Presentation/Dto/'
             - '../src/*/Tests/'
             - '../src/Shared/Application/Health/HealthCheckResult.php'
 
